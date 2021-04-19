@@ -12,7 +12,7 @@ true_w = [2, -3.4]
 true_b = 4.2
 features = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
 labels = true_w[0] * features[:, 0] + true_w[1] * features[:, 1] + true_b
-labels += nd.random.normal(scale=0.01, shape=labels.shape)
+labels += nd.random.normal(scale=0.01, shape=labels.shape)      # 模拟真实值，利用正态分布随机函数
 
 
 # 3.2.2 读取数据集

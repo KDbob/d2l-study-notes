@@ -1,6 +1,5 @@
 import os
 import sys
-
 from IPython import display
 from matplotlib import pyplot as plt
 
@@ -75,6 +74,20 @@ def evaluate_accuracy(data_iter, net):
         acc_sum += (net(X).argmax(axis=1) == y).sum().asscalar()
         n += y.size
     return acc_sum / n
+
+
+def corr2d(X, K):
+    """
+    二维互相关运算
+    :param X: 数组X
+    :param K: 核数组K
+    """
+    h, w = K.shape
+    Y = nd.zeros((X.shape[0] - h + 1, X.shape[1] - w + 1))  # 输出矩阵的形状
+    for i in range(Y.shape[0]):
+        for j in range(Y.shape[1]):
+            Y[i, j] = (X[i:i + h, j:j + w] * K).sum()
+    return Y
 
 
 if __name__ == '__main__':

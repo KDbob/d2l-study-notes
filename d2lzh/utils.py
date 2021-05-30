@@ -1,10 +1,28 @@
 import os
 import sys
+import mxnet as mx
 from IPython import display
 from matplotlib import pyplot as plt
 
-from mxnet import nd
+from mxnet import nd, autograd
 from mxnet.gluon import data as gdata
+
+
+# 硬件相关
+def try_gpu():
+    try:
+        ctx = mx.gpu()
+        _ = nd.zeros((1,), ctx=ctx)
+    except mx.base.MXNetError:
+        ctx = mx.cpu()
+    return ctx
+
+
+# 绘图相关
+def set_figsize(figsize=(3.5, 2.5)):
+    """Set matplotlib figure size."""
+    use_svg_display()
+    plt.rcParams['figure.figsize'] = figsize
 
 
 def use_svg_display():
@@ -12,6 +30,7 @@ def use_svg_display():
     display.set_matplotlib_formats('svg')
 
 
+# 数据集相关
 def get_fashion_mnist_labels(labels):
     '''
     :param labels: [标签数字]
@@ -61,6 +80,7 @@ def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join('~', '.mx
     return train_iter, test_iter
 
 
+# 训练相关
 def sgd(params, lr, batch_size):
     """Mini-batch stochastic gradient descent."""
     for param in params:
@@ -68,9 +88,10 @@ def sgd(params, lr, batch_size):
 
 
 def evaluate_accuracy(data_iter, net):
+    """evaluate_accuracy"""
     acc_sum, n = 0.0, 0
     for X, y in data_iter:
-        y = data_iter.astype('float32')
+        y = y.astype('float32')
         acc_sum += (net(X).argmax(axis=1) == y).sum().asscalar()
         n += y.size
     return acc_sum / n
@@ -88,6 +109,28 @@ def corr2d(X, K):
         for j in range(Y.shape[1]):
             Y[i, j] = (X[i:i + h, j:j + w] * K).sum()
     return Y
+
+
+def train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, params=None, lr=None, trainer=None):
+    """softmax回归实现"""
+    for epoch in range(num_epochs):
+        train_l_sum, train_acc_sum, n = 0.0, 0.0, 0
+        for X, y in train_iter:
+            with autograd.record():
+                y_hat = net(X)
+                l = loss(y_hat, y).sum()
+            l.backward()
+            if trainer is None:
+                sgd(params, lr, batch_size)  # 使用小批量随机梯度下降迭代模型参数
+            else:
+                trainer.step(batch_size)  # “softmax回归的简洁实现”一节将用到
+            y = y.astype('float32')
+            train_l_sum += l.asscalar()
+            train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
+            n += y.size
+        test_acc = evaluate_accuracy(test_iter, net)
+        print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f'
+              % (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc))
 
 
 if __name__ == '__main__':

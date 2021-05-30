@@ -39,6 +39,7 @@ def accuracy(y_hat, y):
 
 
 def evaluate_accuracy(data_iter, net):
+    """评价模型net在数据集data_iter上的准确率"""
     acc_sum, n = 0.0, 0
     for X, y in data_iter:
         y = y.astype('float32')
@@ -50,7 +51,8 @@ def evaluate_accuracy(data_iter, net):
 print(evaluate_accuracy(test_iter, net))  # 结果应该接近1/10
 
 
-def train_ch3(net, tran_iter, test_iter, loss, num_epochs, batch_size, params=None, lr=None, trainer=None):
+# 3.6.7 训练模型
+def train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, params=None, lr=None, trainer=None):
     for epoch in range(num_epochs):
         train_l_sum, train_acc_sum, n = 0.0, 0.0, 0
         for X, y in train_iter:
@@ -59,7 +61,7 @@ def train_ch3(net, tran_iter, test_iter, loss, num_epochs, batch_size, params=No
                 l = loss(y_hat, y).sum()
             l.backward()
             if trainer is None:
-                d2l.sgd(params, lr, batch_size)
+                d2l.sgd(params, lr, batch_size)     # 使用小批量随机梯度下降迭代模型参数
             else:
                 trainer.step(batch_size)  # “softmax回归的简洁实现”一节将用到
             y = y.astype('float32')

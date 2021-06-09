@@ -1,11 +1,14 @@
 import os
 import sys
+import time
+
 import mxnet as mx
 from IPython import display
 from matplotlib import pyplot as plt
 
 from mxnet import nd, autograd
 from mxnet.gluon import data as gdata
+from mxnet.gluon import loss as gloss
 
 
 # 硬件相关
@@ -29,6 +32,17 @@ def use_svg_display():
     """Use svg format to display plot in jupyter"""
     display.set_matplotlib_formats('svg')
 
+
+def semilogy(x_vals, y_vals, x_label, y_label, x2_vals=None, y2_vals=None,
+             legend=None, figsize=(3.5, 2.5)):
+    """定义作图函数semilogy，其中 y轴使用了对数尺度"""
+    set_figsize(figsize)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.semilogy(x_vals, y_vals)
+    if x2_vals and y2_vals:
+        plt.semilogy(x2_vals, y2_vals, linestyle=':')
+        plt.legend(legend)
 
 # 数据集相关
 def get_fashion_mnist_labels(labels):
@@ -87,10 +101,23 @@ def sgd(params, lr, batch_size):
         param[:] = param - lr * param.grad / batch_size
 
 
-def evaluate_accuracy(data_iter, net):
+def evaluate_accuracy_ch3(data_iter, net):
     """evaluate_accuracy"""
     acc_sum, n = 0.0, 0
     for X, y in data_iter:
+        # 如果ctx代表GPU即相应的显存，将数据复制到显存上。(新增)
+        y = y.astype('float32')
+        acc_sum += (net(X).argmax(axis=1) == y).sum().asscalar()
+        n += y.size
+    return acc_sum / n
+
+
+def evaluate_accuracy_ch5(data_iter, net, ctx):
+    """evaluate_accuracy"""
+    acc_sum, n = 0.0, 0
+    for X, y in data_iter:
+        # 如果ctx代表GPU即相应的显存，将数据复制到显存上。(新增)
+        X, y = X.as_in_context(ctx), y.as_in_context(ctx).astype('float32')
         y = y.astype('float32')
         acc_sum += (net(X).argmax(axis=1) == y).sum().asscalar()
         n += y.size
@@ -128,9 +155,33 @@ def train_ch3(net, train_iter, test_iter, loss, num_epochs, batch_size, params=N
             train_l_sum += l.asscalar()
             train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
             n += y.size
-        test_acc = evaluate_accuracy(test_iter, net)
+        test_acc = evaluate_accuracy_ch3(test_iter, net)
         print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f'
               % (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc))
+
+
+def train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx,
+              num_epochs):
+    """softmax回归实现"""
+    print('training on', ctx)
+    loss = gloss.SoftmaxCrossEntropyLoss()
+    for epoch in range(num_epochs):
+        train_l_sum, train_acc_sum, n, start = 0.0, 0.0, 0, time.time()
+        for X, y in train_iter:
+            # 如果ctx代表GPU即相应的显存，将数据复制到显存上。(新增)
+            X, y = X.as_in_context(ctx), y.as_in_context(ctx)
+            with autograd.record():
+                y_hat = net(X)
+                l = loss(y_hat, y).sum()
+            l.backward()
+            trainer.step(batch_size)
+            y = y.astype('float32')
+            train_l_sum += l.asscalar()
+            train_acc_sum += (y_hat.argmax(axis=1) == y).sum().asscalar()
+            n += y.size
+        test_acc = evaluate_accuracy_ch5(test_iter, net, ctx)
+        print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f, time %.1f sec'
+              % (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc, time.time() - start))
 
 
 if __name__ == '__main__':

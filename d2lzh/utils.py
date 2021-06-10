@@ -43,6 +43,7 @@ def semilogy(x_vals, y_vals, x_label, y_label, x2_vals=None, y2_vals=None,
     if x2_vals and y2_vals:
         plt.semilogy(x2_vals, y2_vals, linestyle=':')
         plt.legend(legend)
+    plt.show()
 
 # 数据集相关
 def get_fashion_mnist_labels(labels):
@@ -94,13 +95,30 @@ def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join('~', '.mx
     return train_iter, test_iter
 
 
-# 训练相关
+# 定义模型
+def linreg(X, w, b):
+    """线性回归的矢量计算表达式"""
+    return nd.dot(X, w) + b
+
+
+# 定义损失函数
+def squared_loss(y_hat, y):
+    return (y_hat - y.reshape(y_hat.shape)) ** 2 / 2
+
+
+# 定义函数
 def sgd(params, lr, batch_size):
     """Mini-batch stochastic gradient descent."""
     for param in params:
         param[:] = param - lr * param.grad / batch_size
 
 
+def l2_penalty(w):
+    """定义L2范数惩罚项"""
+    return (w ** 2).sum() / 2
+
+
+# 训练相关
 def evaluate_accuracy_ch3(data_iter, net):
     """evaluate_accuracy"""
     acc_sum, n = 0.0, 0
